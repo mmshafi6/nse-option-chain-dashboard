@@ -1,0 +1,18 @@
+{
+  "records": {
+    "underlyingValue": 22350,
+    "expiryDates": ["19-Sep-2024", "26-Sep-2024"],
+    "data": [
+      {
+        "strikePrice": 22300,
+        "CE": { "openInterest": 120000 },
+        "PE": { "openInterest": 98000 }
+      },
+      {
+        "strikePrice": 22400,
+        "CE": { "openInterest": 140000 },
+        "PE": { "openInterest": 160000 }
+      }
+    ]
+  }
+}
