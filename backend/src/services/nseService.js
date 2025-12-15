@@ -1,6 +1,13 @@
 import axios from "axios";
+import https from "https";
 
 let cookie = "";
+
+// ✅ Keep-alive agent (VERY IMPORTANT)
+const agent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 5
+});
 
 const headers = {
   "User-Agent":
@@ -13,7 +20,8 @@ const headers = {
 async function refreshCookie() {
   const res = await axios.get("https://www.nseindia.com", {
     headers,
-    timeout: 10000
+    httpsAgent: agent,
+    timeout: 20000
   });
 
   cookie = res.headers["set-cookie"]
@@ -21,7 +29,7 @@ async function refreshCookie() {
     .join("; ");
 }
 
-// ✅ LIVE NSE — CLOUD ONLY
+// ✅ NEVER THROW → ALWAYS RETURN
 export async function getOptionChain() {
   try {
     if (!cookie) await refreshCookie();
@@ -29,35 +37,41 @@ export async function getOptionChain() {
     const res = await axios.get(
       "https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY",
       {
-        headers: {
-          ...headers,
-          Cookie: cookie
-        },
-        timeout: 10000
+        headers: { ...headers, Cookie: cookie },
+        httpsAgent: agent,
+        timeout: 20000
       }
     );
 
     return res.data;
   } catch (err) {
-    console.log("NSE blocked once, retrying...");
-    cookie = "";
-    await refreshCookie();
+    console.log("⚠ NSE first attempt failed, retrying once...");
 
-    const retry = await axios.get(
-      "https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY",
-      {
-        headers: {
-          ...headers,
-          Cookie: cookie
+    try {
+      cookie = "";
+      await refreshCookie();
+
+      const retry = await axios.get(
+        "https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY",
+        {
+          headers: { ...headers, Cookie: cookie },
+          httpsAgent: agent,
+          timeout: 20000
         }
-      }
-    );
+      );
 
-    return retry.data;
+      return retry.data;
+    } catch {
+      // 🔴 NEVER crash Express
+      return {
+        error: "NSE temporarily unavailable",
+        records: { data: [], expiryDates: [] }
+      };
+    }
   }
 }
 
 export async function getExpiryDates() {
   const data = await getOptionChain();
-  return data.records.expiryDates;
+  return data.records?.expiryDates || [];
 }
